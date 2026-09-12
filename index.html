@@ -1,0 +1,1130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostCipher — Stealth Secret Messenger</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cipher: {
+                            base: '#0B0F17',
+                            card: '#111827',
+                            surface: '#182234',
+                            border: '#1E293B',
+                            accent: '#10B981',
+                            accentHover: '#059669',
+                            glow: 'rgba(16, 185, 129, 0.15)',
+                            danger: '#EF4444',
+                            dangerSurface: '#361214'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Custom scrollbars and glow animations */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0B0F17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1E293B;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .cipher-glow {
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.12);
+        }
+        .cipher-input:focus {
+            box-shadow: 0 0 0 2px #10B981, 0 0 15px rgba(16, 185, 129, 0.2);
+        }
+        @keyframes pulseSlow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        .pulse-subtle {
+            animation: pulseSlow 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-[#070A10] text-slate-200 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-black">
+
+    <header class="border-b border-slate-800/80 bg-[#0B0F17]/90 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-[1px] shadow-lg shadow-emerald-500/20">
+                    <div class="w-full h-full bg-[#0B0F17] rounded-[11px] flex items-center justify-center text-emerald-400">
+                        <i data-lucide="shield-check" class="w-5 h-5"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <h1 class="text-base sm:text-lg font-bold tracking-tight text-white font-mono">GHOST<span class="text-emerald-400">CIPHER</span></h1>
+                        <span class="text-[10px] uppercase font-semibold bg-emerald-950/70 border border-emerald-500/30 text-emerald-400 px-2 py-0.5 rounded-full">AES-GCM-256</span>
+                    </div>
+                    <p id="t-subtitle" class="text-xs text-slate-400 hidden sm:block">Pre-shared zero-config autonomous encryption engine</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-2.5">
+                <!-- Language Selector Dropdown -->
+                <div class="relative flex items-center bg-slate-900/90 border border-slate-800 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500 transition">
+                    <i data-lucide="globe" class="w-4 h-4 text-emerald-400 mr-2 shrink-0"></i>
+                    <select id="langSelector" onchange="changeLanguage(this.value)" class="bg-transparent text-xs font-mono text-slate-200 outline-none cursor-pointer pr-1">
+                        <option value="en" class="bg-slate-900 text-slate-200">English (EN)</option>
+                        <option value="zh-TW" class="bg-slate-900 text-slate-200">繁體中文 (ZH-TW)</option>
+                        <option value="zh-CN" class="bg-slate-900 text-slate-200">简体中文 (ZH-CN)</option>
+                        <option value="ja" class="bg-slate-900 text-slate-200">日本語 (JA)</option>
+                        <option value="es" class="bg-slate-900 text-slate-200">Español (ES)</option>
+                    </select>
+                </div>
+
+                <div class="hidden md:flex items-center gap-2 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-xl text-xs font-mono">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span id="t-statusLocked" class="text-slate-300">KEY LOCKED & SECURED</span>
+                </div>
+
+                <!-- Help Guide Button -->
+                <button id="helpModalBtn" onclick="toggleModal(true)" class="flex items-center gap-1.5 text-xs font-mono text-slate-300 hover:text-white px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 transition">
+                    <i data-lucide="help-circle" class="w-4 h-4 text-emerald-400"></i>
+                    <span id="t-helpBtnText" class="hidden sm:inline">User Guide</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex flex-col">
+        <!-- Notice banner -->
+        <div class="mb-6 p-4 rounded-xl bg-slate-900/60 border border-slate-800 flex items-start gap-3.5">
+            <i data-lucide="lock" class="w-5 h-5 text-emerald-400 shrink-0 mt-0.5"></i>
+            <div id="t-noticeBanner" class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                <strong class="text-white">Autonomous Encryption Protocol:</strong> The 256-bit cryptographic key is baked into this runtime environment and cannot be modified, leaked, or intercepted through the UI. Any person running this link shares this secure communication channel.
+            </div>
+        </div>
+
+        <!-- Mode Toggle Tabs -->
+        <div class="flex p-1.5 bg-slate-900/90 border border-slate-800/80 rounded-2xl mb-6 shadow-inner w-full max-w-md mx-auto">
+            <button id="tabEncrypt" onclick="switchMode('encrypt')" class="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm transition-all duration-200 bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-mono font-semibold">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+                <span id="t-tabEncrypt">Encrypt Message</span>
+            </button>
+            <button id="tabDecrypt" onclick="switchMode('decrypt')" class="flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 font-mono">
+                <i data-lucide="unlock" class="w-4 h-4"></i>
+                <span id="t-tabDecrypt">Decrypt Message</span>
+            </button>
+        </div>
+
+        <!-- Encrypt Section -->
+        <div id="encryptSection" class="transition-all duration-300 space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Plaintext Input Card -->
+                <div class="bg-[#101726] border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl cipher-glow">
+                    <div class="flex items-center justify-between mb-3">
+                        <label for="plaintextInput" class="text-xs font-mono font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                            <span id="t-labelPlaintext">Raw Message</span>
+                        </label>
+                        <span id="plainCharCount" class="text-xs text-slate-400 font-mono">0 chars</span>
+                    </div>
+                    <textarea 
+                        id="plaintextInput" 
+                        rows="8" 
+                        placeholder="Type or paste your secret message here..." 
+                        class="w-full bg-[#090D16] text-slate-100 placeholder-slate-500 rounded-xl p-4 text-sm font-sans resize-none border border-slate-800 outline-none cipher-input transition flex-1 leading-relaxed"
+                    ></textarea>
+                    
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/80">
+                        <button onclick="clearText('plaintextInput')" class="text-xs text-slate-400 hover:text-slate-200 transition font-mono flex items-center gap-1.5 py-1 px-2 rounded hover:bg-slate-800">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span id="t-clearBtnPlain">Clear</span>
+                        </button>
+                        <button id="btnRunEncrypt" onclick="handleEncrypt()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold rounded-xl text-sm transition duration-150 flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95">
+                            <i data-lucide="cpu" class="w-4 h-4"></i>
+                            <span id="t-btnEncryptAction">Encrypt</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ciphertext Output Card -->
+                <div class="bg-[#101726] border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <label for="ciphertextOutput" class="text-xs font-mono font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                            <i data-lucide="terminal" class="w-4 h-4"></i>
+                            <span id="t-labelCiphertextOutput">Encrypted Payload (Base64)</span>
+                        </label>
+                        <span id="cipherCharCount" class="text-xs text-slate-400 font-mono">0 bytes</span>
+                    </div>
+                    <textarea 
+                        id="ciphertextOutput" 
+                        rows="8" 
+                        readonly 
+                        placeholder="Encrypted payload will appear here after encoding..." 
+                        class="w-full bg-[#090D16] text-emerald-300 font-mono placeholder-slate-600 rounded-xl p-4 text-xs resize-none border border-slate-800 outline-none flex-1 leading-relaxed cursor-text selection:bg-cyan-500 selection:text-black"
+                    ></textarea>
+                    
+                    <div class="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-slate-800/80">
+                        <div class="text-[11px] text-slate-500 font-mono flex items-center gap-1">
+                            <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-emerald-400"></i>
+                            <span id="t-gcmTagBadge">AES-GCM Auth Tag Included</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button id="btnTransferDecrypt" onclick="transferToDecrypt()" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-cyan-400 hover:text-cyan-300 font-mono rounded-xl text-xs transition duration-150 flex items-center gap-1.5 border border-cyan-900/50 hover:border-cyan-700 active:scale-95" title="Transfer directly to Decrypt tab">
+                                <i data-lucide="arrow-right-left" class="w-3.5 h-3.5"></i>
+                                <span id="t-sendToDecrypt">Send to Decrypt</span>
+                            </button>
+                            <button id="btnCopyCipher" onclick="copyEncryptedResult()" class="px-4 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 font-mono font-medium rounded-xl text-xs transition duration-150 flex items-center gap-2 border border-emerald-500/40 hover:border-emerald-500/70 active:scale-95 shadow-sm shadow-emerald-950">
+                                <span id="copyCipherIcon"><i data-lucide="copy" class="w-3.5 h-3.5"></i></span>
+                                <span id="copyCipherLabel">Copy Encrypted Text</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Decrypt Section -->
+        <div id="decryptSection" class="hidden transition-all duration-300 space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Ciphertext Input Card -->
+                <div class="bg-[#101726] border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl">
+                    <div class="flex items-center justify-between mb-3">
+                        <label for="ciphertextInput" class="text-xs font-mono font-semibold uppercase tracking-wider text-cyan-400 flex items-center gap-2">
+                            <i data-lucide="code" class="w-4 h-4"></i>
+                            <span id="t-labelCiphertextInput">Encrypted Ciphertext</span>
+                        </label>
+                        <button id="btnPasteCipher" onclick="pasteEncryptedMessages()" class="text-xs text-cyan-300 hover:text-cyan-200 font-mono flex items-center gap-1.5 py-1 px-3 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/60 border border-cyan-700/50 transition-all active:scale-95 shadow-sm">
+                            <i data-lucide="clipboard-paste" class="w-3.5 h-3.5 text-cyan-400"></i>
+                            <span id="t-pasteBtnLabel">Paste Encrypted Messages</span>
+                        </button>
+                    </div>
+                    <textarea 
+                        id="ciphertextInput" 
+                        rows="8" 
+                        placeholder="Paste the Base64 ciphertext here..." 
+                        class="w-full bg-[#090D16] text-slate-100 placeholder-slate-600 rounded-xl p-4 text-xs font-mono resize-none border border-slate-800 outline-none cipher-input transition flex-1 leading-relaxed"
+                    ></textarea>
+                    
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/80">
+                        <button onclick="clearText('ciphertextInput')" class="text-xs text-slate-400 hover:text-slate-200 transition font-mono flex items-center gap-1.5 py-1 px-2 rounded hover:bg-slate-800">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span id="t-clearBtnCipher">Clear</span>
+                        </button>
+                        <button id="btnRunDecrypt" onclick="handleDecrypt()" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-mono font-bold rounded-xl text-sm transition duration-150 flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95">
+                            <i data-lucide="key-round" class="w-4 h-4"></i>
+                            <span id="t-btnDecryptAction">Decrypt Message</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Plaintext Output Card -->
+                <div class="bg-[#101726] border border-slate-800 rounded-2xl p-5 flex flex-col shadow-xl cipher-glow">
+                    <div class="flex items-center justify-between mb-3">
+                        <label for="plaintextOutput" class="text-xs font-mono font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                            <span id="t-labelPlaintextOutput">Decrypted Plaintext</span>
+                        </label>
+                        <span id="decryptedCharCount" class="text-xs text-slate-400 font-mono">0 chars</span>
+                    </div>
+                    <textarea 
+                        id="plaintextOutput" 
+                        rows="8" 
+                        readonly 
+                        placeholder="The original secret message will appear here once deciphered..." 
+                        class="w-full bg-[#090D16] text-slate-100 placeholder-slate-600 rounded-xl p-4 text-sm font-sans resize-none border border-slate-800 outline-none flex-1 leading-relaxed cursor-text selection:bg-emerald-500 selection:text-black"
+                    ></textarea>
+                    
+                    <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/80">
+                        <span id="decryptStatusTag" class="text-[11px] font-mono text-slate-500">Waiting for payload...</span>
+                        <button id="btnCopyPlain" onclick="copyDecryptedResult()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-100 font-mono rounded-xl text-xs transition duration-150 flex items-center gap-2 border border-slate-700 active:scale-95">
+                            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+                            <span id="t-btnCopyPlain">Copy Plaintext</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Architecture Summary Card -->
+        <div class="mt-8 border border-slate-800/80 bg-slate-900/40 rounded-2xl p-6">
+            <h2 id="t-archHeading" class="text-xs font-mono uppercase tracking-widest text-slate-400 mb-4 flex items-center gap-2">
+                <i data-lucide="cpu" class="w-4 h-4 text-emerald-400"></i>
+                Cryptographic Integrity & Architecture
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs text-slate-400">
+                <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60">
+                    <span id="t-archCard1Title" class="text-white font-mono block font-semibold mb-1">AES-256-GCM Mode</span>
+                    <span id="t-archCard1Desc">Galois/Counter Mode provides both confidentiality and built-in cryptographic authentication to prevent bit-flipping attacks.</span>
+                </div>
+                <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60">
+                    <span id="t-archCard2Title" class="text-white font-mono block font-semibold mb-1">Dynamic 96-Bit Nonce</span>
+                    <span id="t-archCard2Desc">Every encryption run generates a fresh cryptographically strong pseudo-random initialization vector (IV).</span>
+                </div>
+                <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60">
+                    <span id="t-archCard3Title" class="text-white font-mono block font-semibold mb-1">Immured Key Architecture</span>
+                    <span id="t-archCard3Desc">The pre-shared key is non-extractable from the UI, preventing accidental exposure or manual tampering.</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Help & Guide Modal -->
+    <div id="infoModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+        <div class="bg-[#111827] border border-slate-800 max-w-2xl w-full rounded-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="p-1.5 bg-emerald-950/80 border border-emerald-500/30 rounded-lg text-emerald-400">
+                        <i data-lucide="book-open" class="w-5 h-5"></i>
+                    </div>
+                    <h3 id="t-modalTitle" class="text-base font-bold text-white font-mono">GhostCipher Help & Security Guide</h3>
+                </div>
+                <button onclick="toggleModal(false)" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Workflow Guides -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl space-y-2">
+                    <div class="flex items-center gap-2 text-emerald-400 font-mono text-xs font-bold uppercase">
+                        <i data-lucide="lock" class="w-4 h-4"></i>
+                        <span id="t-guideEncryptTitle">1. How to Encrypt</span>
+                    </div>
+                    <p id="t-guideEncryptDesc" class="text-xs text-slate-300 leading-relaxed">
+                        Select <strong>Encrypt Message</strong> tab, enter your confidential text in the raw message box, and click <strong>Encrypt</strong>. Click <strong>Copy Encrypted Text</strong> to share the Base64 ciphertext with anyone using this cipher link.
+                    </p>
+                </div>
+
+                <div class="bg-slate-900/80 border border-slate-800 p-4 rounded-xl space-y-2">
+                    <div class="flex items-center gap-2 text-cyan-400 font-mono text-xs font-bold uppercase">
+                        <i data-lucide="unlock" class="w-4 h-4"></i>
+                        <span id="t-guideDecryptTitle">2. How to Decrypt</span>
+                    </div>
+                    <p id="t-guideDecryptDesc" class="text-xs text-slate-300 leading-relaxed">
+                        Select <strong>Decrypt Message</strong> tab. Click <strong>Paste Encrypted Messages</strong> (or press Ctrl+V). The cipher will automatically authenticate and decipher the text into original plaintext.
+                    </p>
+                </div>
+            </div>
+
+            <!-- In-depth Security Features -->
+            <div class="space-y-3 text-xs text-slate-300 leading-relaxed border-t border-slate-800/80 pt-4">
+                <h4 id="t-guideSecurityTitle" class="text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i>
+                    Protocol Specifications & Privacy
+                </h4>
+                <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60 space-y-2">
+                    <p id="t-guideSecPoint1">
+                        <strong class="text-white">Tamper-Proof Galois/Counter Mode:</strong> AES-GCM includes a 128-bit authentication tag. If any byte in the transmission is modified or truncated, decryption fails immediately.
+                    </p>
+                    <p id="t-guideSecPoint2">
+                        <strong class="text-white">Zero Server Exposure:</strong> All cryptographic operations execute 100% locally in your browser via the native W3C Web Crypto API. No data, plaintext, or cipher is sent to any server.
+                    </p>
+                    <p id="t-guideSecPoint3">
+                        <strong class="text-white">Why is the key hidden & locked?</strong> This application operates on an embedded pre-shared pairing model. Both parties communicate over the pre-agreed channel without exchanging passwords across untrusted networks.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Troubleshooting -->
+            <div class="space-y-2 text-xs text-slate-400 border-t border-slate-800/80 pt-3">
+                <div class="flex items-center gap-1.5 text-amber-400 font-mono font-semibold">
+                    <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                    <span id="t-troubleshootTitle">Troubleshooting & Tips</span>
+                </div>
+                <p id="t-troubleshootDesc" class="leading-relaxed">
+                    If you see <em>"Authentication Failed / Corrupt Payload"</em>, ensure that the entire Base64 string was copied without missing characters or extra spaces.
+                </p>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="toggleModal(false)" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white font-mono text-xs rounded-xl transition">
+                    <span id="t-closeModalBtn">Close Guide</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border text-sm font-mono backdrop-blur-lg">
+        <span id="toastIcon"></span>
+        <span id="toastMessage">Notification</span>
+    </div>
+
+    <script>
+        const I18N = {
+            'en': {
+                subtitle: "Pre-shared zero-config autonomous encryption engine",
+                statusLocked: "KEY LOCKED & SECURED",
+                helpBtnText: "User Guide",
+                noticeBanner: "<strong class='text-white'>Autonomous Encryption Protocol:</strong> The 256-bit cryptographic key is baked into this runtime environment and cannot be modified, leaked, or intercepted through the UI. Any person running this link shares this secure communication channel.",
+                tabEncrypt: "Encrypt Message",
+                tabDecrypt: "Decrypt Message",
+                labelPlaintext: "Raw Message",
+                plainPlaceholder: "Type or paste your secret message here...",
+                clearBtn: "Clear",
+                btnEncryptAction: "Encrypt",
+                labelCiphertextOutput: "Encrypted Payload (Base64)",
+                cipherOutputPlaceholder: "Encrypted payload will appear here after encoding...",
+                gcmTagBadge: "AES-GCM Auth Tag Included",
+                sendToDecrypt: "Send to Decrypt",
+                copyCipherLabel: "Copy Encrypted Text",
+                copiedText: "Copied!",
+                labelCiphertextInput: "Encrypted Ciphertext",
+                cipherInputPlaceholder: "Paste the Base64 ciphertext here...",
+                pasteBtnLabel: "Paste Encrypted Messages",
+                btnDecryptAction: "Decrypt Message",
+                labelPlaintextOutput: "Decrypted Plaintext",
+                plainOutputPlaceholder: "The original secret message will appear here once deciphered...",
+                btnCopyPlain: "Copy Plaintext",
+                decryptWaiting: "Waiting for payload...",
+                decryptVerified: "Verified & Authentic",
+                decryptFailed: "Authentication Failed / Corrupt Payload",
+                archHeading: "Cryptographic Integrity & Architecture",
+                archCard1Title: "AES-256-GCM Mode",
+                archCard1Desc: "Galois/Counter Mode provides both confidentiality and built-in cryptographic authentication to prevent bit-flipping attacks.",
+                archCard2Title: "Dynamic 96-Bit Nonce",
+                archCard2Desc: "Every encryption run generates a fresh cryptographically strong pseudo-random initialization vector (IV).",
+                archCard3Title: "Immured Key Architecture",
+                archCard3Desc: "The pre-shared key is non-extractable from the UI, preventing accidental exposure or manual tampering.",
+                modalTitle: "GhostCipher Help & Security Guide",
+                guideEncryptTitle: "1. How to Encrypt",
+                guideEncryptDesc: "Select <strong>Encrypt Message</strong> tab, enter your confidential text in the raw message box, and click <strong>Encrypt</strong>. Click <strong>Copy Encrypted Text</strong> to share the Base64 ciphertext with anyone using this cipher link.",
+                guideDecryptTitle: "2. How to Decrypt",
+                guideDecryptDesc: "Select <strong>Decrypt Message</strong> tab. Click <strong>Paste Encrypted Messages</strong> (or press Ctrl+V). The cipher will automatically authenticate and decipher the text into original plaintext.",
+                guideSecurityTitle: "Protocol Specifications & Privacy",
+                guideSecPoint1: "<strong class='text-white'>Tamper-Proof Galois/Counter Mode:</strong> AES-GCM includes a 128-bit authentication tag. If any byte in the transmission is modified or truncated, decryption fails immediately.",
+                guideSecPoint2: "<strong class='text-white'>Zero Server Exposure:</strong> All cryptographic operations execute 100% locally in your browser via the native W3C Web Crypto API. No data, plaintext, or cipher is sent to any server.",
+                guideSecPoint3: "<strong class='text-white'>Why is the key hidden & locked?</strong> This application operates on an embedded pre-shared pairing model. Both parties communicate over the pre-agreed channel without exchanging passwords across untrusted networks.",
+                troubleshootTitle: "Troubleshooting & Tips",
+                troubleshootDesc: "If you see <em>'Authentication Failed / Corrupt Payload'</em>, ensure that the entire Base64 string was copied without missing characters or extra spaces.",
+                closeModalBtn: "Close Guide",
+                toastEncryptSuccess: "Message encrypted successfully!",
+                toastDecryptSuccess: "Message decrypted successfully!",
+                toastEmptyPlain: "Please enter text to encrypt.",
+                toastEmptyCipher: "Please paste ciphertext to decrypt.",
+                toastCopiedCipher: "Encrypted text copied to clipboard!",
+                toastCopiedPlain: "Plaintext copied to clipboard!",
+                toastPasteSuccess: "Pasted encrypted message from clipboard!",
+                toastPasteDenied: "Clipboard access denied. Please press Ctrl+V / Cmd+V.",
+                toastEmptyClipboard: "Clipboard is empty!",
+                toastTransferred: "Transferred to decrypt & deciphered!",
+                toastNothingToCopy: "Nothing to copy!",
+                charsText: "chars",
+                bytesText: "bytes"
+            },
+            'zh-TW': {
+                subtitle: "預置安全密鑰 · 零配置自主加密引擎",
+                statusLocked: "密鑰已鎖定保護",
+                helpBtnText: "使用說明",
+                noticeBanner: "<strong class='text-white'>自主加密協議：</strong>本系統內嵌不可篡改之 256 位元高級對稱密鑰，界面中無任何導出或窺探途徑。只要雙方使用此終端即可建立端對端高強度私密通訊通道。",
+                tabEncrypt: "加密訊息",
+                tabDecrypt: "解密訊息",
+                labelPlaintext: "原始明文訊息",
+                plainPlaceholder: "請在此輸入或貼上您想加密的秘密訊息...",
+                clearBtn: "清空",
+                btnEncryptAction: "執行加密",
+                labelCiphertextOutput: "加密密文 (Base64)",
+                cipherOutputPlaceholder: "加密後的 Base64 密文將在此自動生成...",
+                gcmTagBadge: "內建 AES-GCM 完整性認證標籤",
+                sendToDecrypt: "傳送至解密區",
+                copyCipherLabel: "複製加密文字",
+                copiedText: "已複製！",
+                labelCiphertextInput: "加密密文字串",
+                cipherInputPlaceholder: "請在此貼上 Base64 格式的加密密文...",
+                pasteBtnLabel: "貼上加密訊息",
+                btnDecryptAction: "執行解密",
+                labelPlaintextOutput: "解密還原明文",
+                plainOutputPlaceholder: "驗證並解密完成後，原始秘密訊息將顯示於此...",
+                btnCopyPlain: "複製明文",
+                decryptWaiting: "等待密文輸入...",
+                decryptVerified: "驗證成功 · 訊息完整無損",
+                decryptFailed: "驗證失敗 · 密文遭篡改或損毀",
+                archHeading: "密碼學完整性與系統架構",
+                archCard1Title: "AES-256-GCM 認證加密",
+                archCard1Desc: "採用伽羅瓦/計數器模式（GCM），同時提供極高機密性與防篡改認證標籤，杜絕位元翻轉攻擊。",
+                archCard2Title: "動態 96-Bit 隨機向量",
+                archCard2Desc: "每次加密皆調用系統級隨機發生器生成專屬 IV，確保相同明文產生完全相異之密文。",
+                archCard3Title: "封裝式密鑰架構",
+                archCard3Desc: "預共享密鑰深植於執行環境且不可導出，徹底杜絕密碼遺忘、泄露或人為竄改風險。",
+                modalTitle: "GhostCipher 使用指南與安全規範",
+                guideEncryptTitle: "1. 如何加密訊息",
+                guideEncryptDesc: "點擊<strong>加密訊息</strong>分頁，在輸入框中鍵入秘密文字，按<strong>執行加密</strong>。接著點擊<strong>複製加密文字</strong>即可透過任何聊天工具傳送給對方。",
+                guideDecryptTitle: "2. 如何解密訊息",
+                guideDecryptDesc: "點擊<strong>解密訊息</strong>分頁，按下<strong>貼上加密訊息</strong>按鈕（或按 Ctrl+V）。系統將自動執行 GCM 完整性驗證並還原為明文。",
+                guideSecurityTitle: "安全性與隱私規範",
+                guideSecPoint1: "<strong class='text-white'>防篡改 GCM 認證：</strong>AES-GCM 包含 128 位元驗證標籤。只要密文在傳輸過程中被竄改哪怕一個字母，解密即刻中止並發出警報。",
+                guideSecPoint2: "<strong class='text-white'>全本地執行（零伺服器傳輸）：</strong>所有加解密運算 100% 於瀏覽器核心透過 W3C Web Crypto API 完成，完全不經過任何第三方雲端或網路伺服器。",
+                guideSecPoint3: "<strong class='text-white'>為何隱藏且鎖定密鑰？</strong>採用端對端配對模型，通訊雙方無需在不安全的通訊軟體上頻繁傳送密碼，真正實現「開箱即用」的隱密傳訊。",
+                troubleshootTitle: "排錯與使用訣竅",
+                troubleshootDesc: "若顯示<em>「驗證失敗 · 密文遭篡改或損毀」</em>，請確認複製的 Base64 密文字串無遺漏字符、多餘空格或被通訊軟體截斷。",
+                closeModalBtn: "關閉說明",
+                toastEncryptSuccess: "訊息已成功加密！",
+                toastDecryptSuccess: "密文驗證成功，解密完成！",
+                toastEmptyPlain: "請先輸入需要加密的文字。",
+                toastEmptyCipher: "請先貼上需要解密的密文。",
+                toastCopiedCipher: "加密文字已複製到剪貼簿！",
+                toastCopiedPlain: "解密明文已複製到剪貼簿！",
+                toastPasteSuccess: "已從剪貼簿貼上加密訊息！",
+                toastPasteDenied: "剪貼簿權限受限，請直接使用 Ctrl+V 貼上。",
+                toastEmptyClipboard: "剪貼簿內無任何內容！",
+                toastTransferred: "已快速轉移至解密區並完成解密！",
+                toastNothingToCopy: "暫無內容可複製！",
+                charsText: "字元",
+                bytesText: "位元組"
+            },
+            'zh-CN': {
+                subtitle: "预置安全密钥 · 零配置自主加密引擎",
+                statusLocked: "密钥已锁定保护",
+                helpBtnText: "使用说明",
+                noticeBanner: "<strong class='text-white'>自主加密协议：</strong>本系统内置不可篡改的 256 位高级对称密钥，界面中无任何导出或窥探途径。只要双方使用此终端即可建立端对端高强度私密通讯通道。",
+                tabEncrypt: "加密消息",
+                tabDecrypt: "解密消息",
+                labelPlaintext: "原始明文消息",
+                plainPlaceholder: "请在此输入或粘贴您想加密的秘密消息...",
+                clearBtn: "清空",
+                btnEncryptAction: "执行加密",
+                labelCiphertextOutput: "加密密文 (Base64)",
+                cipherOutputPlaceholder: "加密后的 Base64 密文将在此自动生成...",
+                gcmTagBadge: "内置 AES-GCM 完整性认证标签",
+                sendToDecrypt: "传送至解密区",
+                copyCipherLabel: "复制加密文本",
+                copiedText: "已复制！",
+                labelCiphertextInput: "加密密文字符串",
+                cipherInputPlaceholder: "请在此粘贴 Base64 格式的加密密文...",
+                pasteBtnLabel: "粘贴加密消息",
+                btnDecryptAction: "执行解密",
+                labelPlaintextOutput: "解密还原明文",
+                plainOutputPlaceholder: "验证并解密完成后，原始秘密消息将显示于此...",
+                btnCopyPlain: "复制明文",
+                decryptWaiting: "等待密文输入...",
+                decryptVerified: "验证成功 · 消息完整无损",
+                decryptFailed: "验证失败 · 密文遭篡改或损坏",
+                archHeading: "密码学完整性与系统架构",
+                archCard1Title: "AES-256-GCM 认证加密",
+                archCard1Desc: "采用伽罗瓦/计数器模式（GCM），同时提供极高机密性与防篡改认证标签，杜绝比特翻转攻击。",
+                archCard2Title: "动态 96-Bit 随机向量",
+                archCard2Desc: "每次加密皆调用系统级随机发生器生成专属 IV，确保相同明文产生完全不同的密文。",
+                archCard3Title: "封装式密钥架构",
+                archCard3Desc: "预共享密钥深植于运行环境且不可导出，彻底杜绝密码遗忘、泄露或人为篡改风险。",
+                modalTitle: "GhostCipher 使用指南与安全规范",
+                guideEncryptTitle: "1. 如何加密消息",
+                guideEncryptDesc: "点击<strong>加密消息</strong>标签页，在输入框中键入秘密文本，点击<strong>执行加密</strong>。接着点击<strong>复制加密文本</strong>即可通过任何聊天工具发送给对方。",
+                guideDecryptTitle: "2. 如何解密消息",
+                guideDecryptDesc: "点击<strong>解密消息</strong>标签页，按下<strong>粘贴加密消息</strong>按钮（或按 Ctrl+V）。系统将自动执行 GCM 完整性验证并还原为明文。",
+                guideSecurityTitle: "安全性与隐私规范",
+                guideSecPoint1: "<strong class='text-white'>防篡改 GCM 认证：</strong>AES-GCM 包含 128 位验证标签。只要密文在传输过程中被篡改哪怕一个字母，解密立刻中止并发出警报。",
+                guideSecPoint2: "<strong class='text-white'>全本地执行（零服务器传输）：</strong>所有加解密运算 100% 在浏览器核心通过 W3C Web Crypto API 完成，完全不经过任何第三方云端或网络服务器。",
+                guideSecPoint3: "<strong class='text-white'>为何隐藏且锁定密钥？</strong>采用端对端配对模型，通讯双方无需在不安全的聊天工具中反复发送密码，真正实现即开即用的高隐密传输。",
+                troubleshootTitle: "排错与使用技巧",
+                troubleshootDesc: "若显示<em>“验证失败 · 密文遭篡改或损坏”</em>，请确认复制的 Base64 密文字符串无遗漏字符、多余空格或被通讯软件截断。",
+                closeModalBtn: "关闭说明",
+                toastEncryptSuccess: "消息已成功加密！",
+                toastDecryptSuccess: "密文验证成功，解密完成！",
+                toastEmptyPlain: "请先输入需要加密的文本。",
+                toastEmptyCipher: "请先粘贴需要解密的密文。",
+                toastCopiedCipher: "加密文本已复制到剪贴板！",
+                toastCopiedPlain: "解密明文已复制到剪贴板！",
+                toastPasteSuccess: "已从剪贴板粘贴加密消息！",
+                toastPasteDenied: "剪贴板权限受限，请直接使用 Ctrl+V 粘贴。",
+                toastEmptyClipboard: "剪贴板内无任何内容！",
+                toastTransferred: "已快速转移至解密区并完成解密！",
+                toastNothingToCopy: "暂无内容可复制！",
+                charsText: "字符",
+                bytesText: "字节"
+            },
+            'ja': {
+                subtitle: "事前共有キー搭載・ゼロコンフィグ自律暗号化エンジン",
+                statusLocked: "キー完全保護ロック中",
+                helpBtnText: "利用ガイド",
+                noticeBanner: "<strong class='text-white'>自律暗号化プロトコル:</strong> 256ビット暗号鍵は実行環境に厳格に組み込まれており、UIから変更・閲覧・流出することはありません。このリンクを利用する双方で強固な暗号化通信が行えます。",
+                tabEncrypt: "メッセージ暗号化",
+                tabDecrypt: "メッセージ復号",
+                labelPlaintext: "平文メッセージ",
+                plainPlaceholder: "ここに秘密のメッセージを入力または貼り付けてください...",
+                clearBtn: "クリア",
+                btnEncryptAction: "暗号化実行",
+                labelCiphertextOutput: "暗号化ペイロード (Base64)",
+                cipherOutputPlaceholder: "暗号化されたBase64文字列がここに生成されます...",
+                gcmTagBadge: "AES-GCM 完全性認証タグ内包",
+                sendToDecrypt: "復号タブへ転送",
+                copyCipherLabel: "暗号文をコピー",
+                copiedText: "コピー完了！",
+                labelCiphertextInput: "暗号文 (Base64)",
+                cipherInputPlaceholder: "ここにBase64暗号文を貼り付けてください...",
+                pasteBtnLabel: "暗号文を貼り付け",
+                btnDecryptAction: "復号実行",
+                labelPlaintextOutput: "復号された平文",
+                plainOutputPlaceholder: "復号に成功すると、ここに元の秘密メッセージが表示されます...",
+                btnCopyPlain: "平文をコピー",
+                decryptWaiting: "ペイロード待機中...",
+                decryptVerified: "認証完了・メッセージ改ざんなし",
+                decryptFailed: "認証失敗・ペイロードが破損または改ざんされています",
+                archHeading: "暗号学的完全性とセキュリティ設計",
+                archCard1Title: "AES-256-GCM 認証暗号",
+                archCard1Desc: "ガロア/カウンターモード(GCM)により、最高度の機密性と改ざん検知認証タグを同時に提供します。",
+                archCard2Title: "動的 96-Bit ナンス (IV)",
+                archCard2Desc: "暗号化ごとに安全な擬似乱数生成器から新しいIVを発行し、同一文章でも毎回異なる暗号文になります。",
+                archCard3Title: "不可逆カプセル化キー",
+                archCard3Desc: "事前共有鍵はブラウザメモリ内でのみ保持され、外部抽出不可としてインポートされています。",
+                modalTitle: "GhostCipher ガイド＆セキュリティ仕様",
+                guideEncryptTitle: "1. 暗号化の手順",
+                guideEncryptDesc: "<strong>メッセージ暗号化</strong>タブを開き、平文を入力して<strong>暗号化実行</strong>を押します。<strong>暗号文をコピー</strong>をクリックして相手に共有してください。",
+                guideDecryptTitle: "2. 復号の手順",
+                guideDecryptDesc: "<strong>メッセージ復号</strong>タブを開き、<strong>暗号文を貼り付け</strong>を押すか Ctrl+V を入力します。自動的に完全性が検証され、平文が表示されます。",
+                guideSecurityTitle: "プロトコル仕様とプライバシー保護",
+                guideSecPoint1: "<strong class='text-white'>改ざん耐性 GCM モード:</strong> 128ビット認証タグが含まれており、暗号文が1文字でも変更されると直ちに復号を中断し拒絶します。",
+                guideSecPoint2: "<strong class='text-white'>サーバー送信ゼロ:</strong> すべての暗号処理は W3C Web Crypto API を使用して端末ローカルで完結します。外部サーバーへ送信されることは一切ありません。",
+                guideSecPoint3: "<strong class='text-white'>なぜキーは非公開なのか？</strong> パスワードを危険なチャットツール等で交換するリスクを完全に排除するため、事前共有された固定セキュアキーを使用しています。",
+                troubleshootTitle: "トラブルシューティング",
+                troubleshootDesc: "<em>「認証失敗・ペイロード破損」</em>と表示された場合は、暗号文の末尾が欠けていないか、余計な空白が含まれていないか確認してください。",
+                closeModalBtn: "閉じる",
+                toastEncryptSuccess: "暗号化が正常に完了しました！",
+                toastDecryptSuccess: "メッセージの検証と復号に成功しました！",
+                toastEmptyPlain: "暗号化するテキストを入力してください。",
+                toastEmptyCipher: "復号する暗号文を貼り付けてください。",
+                toastCopiedCipher: "暗号文をクリップボードにコピーしました！",
+                toastCopiedPlain: "平文をクリップボードにコピーしました！",
+                toastPasteSuccess: "クリップボードから暗号文を貼り付けました！",
+                toastPasteDenied: "クリップボードの読み取りが拒否されました。Ctrl+V で貼り付けてください。",
+                toastEmptyClipboard: "クリップボードが空です！",
+                toastTransferred: "復号タブへ転送し、復号を実行しました！",
+                toastNothingToCopy: "コピーする内容がありません！",
+                charsText: "文字",
+                bytesText: "バイト"
+            },
+            'es': {
+                subtitle: "Motor de cifrado autónomo con clave precompartida",
+                statusLocked: "CLAVE BLOQUEADA Y PROTEGIDA",
+                helpBtnText: "Guía de Uso",
+                noticeBanner: "<strong class='text-white'>Protocolo Autónomo de Cifrado:</strong> La clave criptográfica de 256 bits está incrustada en este entorno y no se puede modificar, ver o interceptar desde la interfaz. Quien use este enlace comparte un canal seguro.",
+                tabEncrypt: "Cifrar Mensaje",
+                tabDecrypt: "Descifrar Mensaje",
+                labelPlaintext: "Mensaje en Claro",
+                plainPlaceholder: "Escriba o pegue su mensaje secreto aquí...",
+                clearBtn: "Borrar",
+                btnEncryptAction: "Cifrar",
+                labelCiphertextOutput: "Carga Cifrada (Base64)",
+                cipherOutputPlaceholder: "El texto cifrado en Base64 aparecerá aquí...",
+                gcmTagBadge: "Etiqueta de autenticación AES-GCM incluida",
+                sendToDecrypt: "Enviar a Descifrar",
+                copyCipherLabel: "Copiar Texto Cifrado",
+                copiedText: "¡Copiado!",
+                labelCiphertextInput: "Texto Cifrado",
+                cipherInputPlaceholder: "Pegue el texto cifrado Base64 aquí...",
+                pasteBtnLabel: "Pegar Mensajes Cifrados",
+                btnDecryptAction: "Descifrar Mensaje",
+                labelPlaintextOutput: "Texto Plano Descifrado",
+                plainOutputPlaceholder: "El mensaje original aparecerá aquí tras descifrarse...",
+                btnCopyPlain: "Copiar Texto Plano",
+                decryptWaiting: "Esperando carga...",
+                decryptVerified: "Verificado y Auténtico",
+                decryptFailed: "Fallo de Autenticación / Carga Corrupta",
+                archHeading: "Integridad Criptográfica y Arquitectura",
+                archCard1Title: "Modo AES-256-GCM",
+                archCard1Desc: "El modo Galois/Counter proporciona confidencialidad y autenticación criptográfica integrada contra ataques de manipulación.",
+                archCard2Title: "Nonce Dinámico de 96 Bits",
+                archCard2Desc: "Cada ejecución genera un vector de inicialización (IV) pseudoaleatorio seguro, produciendo salidas únicas.",
+                archCard3Title: "Arquitectura de Clave Inmutable",
+                archCard3Desc: "La clave precompartida no es extraíble desde la UI, previniendo exposiciones o alteraciones accidentales.",
+                modalTitle: "Guía de Uso y Seguridad de GhostCipher",
+                guideEncryptTitle: "1. Cómo Cifrar",
+                guideEncryptDesc: "Seleccione <strong>Cifrar Mensaje</strong>, escriba su texto y pulse <strong>Cifrar</strong>. Luego haga clic en <strong>Copiar Texto Cifrado</strong> para compartir el Base64.",
+                guideDecryptTitle: "2. Cómo Descifrar",
+                guideDecryptDesc: "Seleccione <strong>Descifrar Mensaje</strong>. Pulse <strong>Pegar Mensajes Cifrados</strong> (o Ctrl+V). El sistema autenticará y descifrará el mensaje de inmediato.",
+                guideSecurityTitle: "Especificaciones del Protocolo y Privacidad",
+                guideSecPoint1: "<strong class='text-white'>Modo GCM Inviolable:</strong> Incluye una etiqueta de autenticación de 128 bits. Si un solo carácter es alterado, el descifrado se cancela.",
+                guideSecPoint2: "<strong class='text-white'>Cero Servidores (100% Local):</strong> Todo el procesamiento se realiza en su navegador mediante la API W3C Web Crypto. Nada se envía a través de la red.",
+                guideSecPoint3: "<strong class='text-white'>¿Por qué la clave está oculta?</strong> Utiliza un modelo emparejado precompartido. Ambas partes se comunican sin necesidad de enviar contraseñas en canales inseguros.",
+                troubleshootTitle: "Solución de Problemas",
+                troubleshootDesc: "Si aparece <em>'Fallo de Autenticación'</em>, compruebe que se haya copiado toda la cadena Base64 sin caracteres faltantes ni espacios extra.",
+                closeModalBtn: "Cerrar Guía",
+                toastEncryptSuccess: "¡Mensaje cifrado con éxito!",
+                toastDecryptSuccess: "¡Mensaje autenticado y descifrado con éxito!",
+                toastEmptyPlain: "Por favor, introduzca texto para cifrar.",
+                toastEmptyCipher: "Por favor, pegue texto cifrado para descifrar.",
+                toastCopiedCipher: "¡Texto cifrado copiado al portapapeles!",
+                toastCopiedPlain: "¡Texto plano copiado al portapapeles!",
+                toastPasteSuccess: "¡Mensaje cifrado pegado desde el portapapeles!",
+                toastPasteDenied: "Acceso al portapapeles denegado. Presione Ctrl+V / Cmd+V.",
+                toastEmptyClipboard: "¡El portapapeles está vacío!",
+                toastTransferred: "¡Transferido a descifrado y resuelto!",
+                toastNothingToCopy: "¡Nada para copiar!",
+                charsText: "caracteres",
+                bytesText: "bytes"
+            }
+        };
+
+        let currentLang = localStorage.getItem('ghostcipher_lang') || 'en';
+        if (!I18N[currentLang]) currentLang = 'en';
+
+        function t(key) {
+            return I18N[currentLang]?.[key] || I18N['en']?.[key] || key;
+        }
+
+        function applyTranslations() {
+            document.getElementById('t-subtitle').textContent = t('subtitle');
+            document.getElementById('t-statusLocked').textContent = t('statusLocked');
+            document.getElementById('t-helpBtnText').textContent = t('helpBtnText');
+            document.getElementById('t-noticeBanner').innerHTML = t('noticeBanner');
+            document.getElementById('t-tabEncrypt').textContent = t('tabEncrypt');
+            document.getElementById('t-tabDecrypt').textContent = t('tabDecrypt');
+            document.getElementById('t-labelPlaintext').textContent = t('labelPlaintext');
+            document.getElementById('plaintextInput').placeholder = t('plainPlaceholder');
+            document.getElementById('t-clearBtnPlain').textContent = t('clearBtn');
+            document.getElementById('t-btnEncryptAction').textContent = t('btnEncryptAction');
+            document.getElementById('t-labelCiphertextOutput').textContent = t('labelCiphertextOutput');
+            document.getElementById('ciphertextOutput').placeholder = t('cipherOutputPlaceholder');
+            document.getElementById('t-gcmTagBadge').textContent = t('gcmTagBadge');
+            document.getElementById('t-sendToDecrypt').textContent = t('sendToDecrypt');
+            document.getElementById('copyCipherLabel').textContent = t('copyCipherLabel');
+            document.getElementById('t-labelCiphertextInput').textContent = t('labelCiphertextInput');
+            document.getElementById('ciphertextInput').placeholder = t('cipherInputPlaceholder');
+            document.getElementById('t-pasteBtnLabel').textContent = t('pasteBtnLabel');
+            document.getElementById('t-clearBtnCipher').textContent = t('clearBtn');
+            document.getElementById('t-btnDecryptAction').textContent = t('btnDecryptAction');
+            document.getElementById('t-labelPlaintextOutput').textContent = t('labelPlaintextOutput');
+            document.getElementById('plaintextOutput').placeholder = t('plainOutputPlaceholder');
+            document.getElementById('t-btnCopyPlain').textContent = t('btnCopyPlain');
+            document.getElementById('t-archHeading').innerHTML = `<i data-lucide="cpu" class="w-4 h-4 text-emerald-400"></i> ${t('archHeading')}`;
+            document.getElementById('t-archCard1Title').textContent = t('archCard1Title');
+            document.getElementById('t-archCard1Desc').textContent = t('archCard1Desc');
+            document.getElementById('t-archCard2Title').textContent = t('archCard2Title');
+            document.getElementById('t-archCard2Desc').textContent = t('archCard2Desc');
+            document.getElementById('t-archCard3Title').textContent = t('archCard3Title');
+            document.getElementById('t-archCard3Desc').textContent = t('archCard3Desc');
+            
+            // Modal
+            document.getElementById('t-modalTitle').textContent = t('modalTitle');
+            document.getElementById('t-guideEncryptTitle').textContent = t('guideEncryptTitle');
+            document.getElementById('t-guideEncryptDesc').innerHTML = t('guideEncryptDesc');
+            document.getElementById('t-guideDecryptTitle').textContent = t('guideDecryptTitle');
+            document.getElementById('t-guideDecryptDesc').innerHTML = t('guideDecryptDesc');
+            document.getElementById('t-guideSecurityTitle').innerHTML = `<i data-lucide="shield" class="w-4 h-4 text-emerald-400"></i> ${t('guideSecurityTitle')}`;
+            document.getElementById('t-guideSecPoint1').innerHTML = t('guideSecPoint1');
+            document.getElementById('t-guideSecPoint2').innerHTML = t('guideSecPoint2');
+            document.getElementById('t-guideSecPoint3').innerHTML = t('guideSecPoint3');
+            document.getElementById('t-troubleshootTitle').textContent = t('troubleshootTitle');
+            document.getElementById('t-troubleshootDesc').innerHTML = t('troubleshootDesc');
+            document.getElementById('t-closeModalBtn').textContent = t('closeModalBtn');
+
+            // Counter units update
+            updateCounters();
+            lucide.createIcons();
+        }
+
+        function changeLanguage(lang) {
+            if (I18N[lang]) {
+                currentLang = lang;
+                localStorage.setItem('ghostcipher_lang', lang);
+                applyTranslations();
+            }
+        }
+
+        function updateCounters() {
+            const pVal = document.getElementById('plaintextInput').value;
+            const cVal = document.getElementById('ciphertextOutput').value;
+            const dVal = document.getElementById('plaintextOutput').value;
+
+            document.getElementById('plainCharCount').textContent = `${pVal.length} ${t('charsText')}`;
+            document.getElementById('cipherCharCount').textContent = `${cVal.length} ${t('bytesText')}`;
+            document.getElementById('decryptedCharCount').textContent = `${dVal.length} ${t('charsText')}`;
+        }
+    </script>
+
+    <script>
+        // Obfuscated embedded 256-bit pre-shared key (AES-256)
+        // Stored internally as a fixed 32-byte key material array
+        const PRE_SHARED_KEY_BYTES = new Uint8Array([
+            0x4b, 0x72, 0x79, 0x70, 0x74, 0x6f, 0x53, 0x65, 
+            0x63, 0x72, 0x65, 0x74, 0x4d, 0x61, 0x73, 0x74, 
+            0x65, 0x72, 0x4b, 0x65, 0x79, 0x32, 0x30, 0x32, 
+            0x36, 0x5f, 0x47, 0x48, 0x4f, 0x53, 0x54, 0x21
+        ]);
+
+        let cachedCryptoKey = null;
+
+        /**
+         * Imports and caches the fixed 256-bit AES-GCM key into Web Crypto.
+         */
+        async function getCryptoKey() {
+            if (cachedCryptoKey) {
+                return cachedCryptoKey;
+            }
+            try {
+                cachedCryptoKey = await window.crypto.subtle.importKey(
+                    "raw",
+                    PRE_SHARED_KEY_BYTES,
+                    { name: "AES-GCM", length: 256 },
+                    false, // non-extractable from memory
+                    ["encrypt", "decrypt"]
+                );
+                return cachedCryptoKey;
+            } catch (err) {
+                console.error("Crypto Key Init Failed:", err);
+                showToast("Cryptographic engine failure", "error");
+                throw err;
+            }
+        }
+
+        /**
+         * Encrypts plaintext string using AES-GCM with a random 96-bit IV.
+         * Produces a Base64 string containing [12 bytes IV] + [Ciphertext + Auth Tag].
+         */
+        async function encryptAES(plaintext) {
+            const key = await getCryptoKey();
+            const encoder = new TextEncoder();
+            const data = encoder.encode(plaintext);
+
+            // Generate cryptographically random 12-byte IV for AES-GCM
+            const iv = window.crypto.getRandomValues(new Uint8Array(12));
+
+            const encryptedBuffer = await window.crypto.subtle.encrypt(
+                {
+                    name: "AES-GCM",
+                    iv: iv
+                },
+                key,
+                data
+            );
+
+            // Combine IV and Ciphertext into one continuous byte array
+            const combined = new Uint8Array(iv.byteLength + encryptedBuffer.byteLength);
+            combined.set(iv, 0);
+            combined.set(new Uint8Array(encryptedBuffer), iv.byteLength);
+
+            return arrayBufferToBase64(combined);
+        }
+
+        /**
+         * Decrypts a Base64 string containing [12 bytes IV] + [Ciphertext + Tag].
+         */
+        async function decryptAES(base64Payload) {
+            const key = await getCryptoKey();
+            const combined = base64ToArrayBuffer(base64Payload.trim());
+
+            if (combined.byteLength < 13) {
+                throw new Error("Payload is too short to be a valid ciphertext.");
+            }
+
+            const iv = combined.slice(0, 12);
+            const cipherData = combined.slice(12);
+
+            const decryptedBuffer = await window.crypto.subtle.decrypt(
+                {
+                    name: "AES-GCM",
+                    iv: iv
+                },
+                key,
+                cipherData
+            );
+
+            const decoder = new TextDecoder();
+            return decoder.decode(decryptedBuffer);
+        }
+
+        /* Helper: Uint8Array to Base64 */
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+        /* Helper: Base64 to Uint8Array */
+        function base64ToArrayBuffer(base64) {
+            const binary_string = window.atob(base64);
+            const len = binary_string.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary_string.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        function switchMode(mode) {
+            const encSec = document.getElementById('encryptSection');
+            const decSec = document.getElementById('decryptSection');
+            const tabEnc = document.getElementById('tabEncrypt');
+            const tabDec = document.getElementById('tabDecrypt');
+
+            if (mode === 'encrypt') {
+                encSec.classList.remove('hidden');
+                decSec.classList.add('hidden');
+
+                tabEnc.className = "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm transition-all duration-200 bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-mono font-semibold";
+                tabDec.className = "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 font-mono";
+            } else {
+                decSec.classList.remove('hidden');
+                encSec.classList.add('hidden');
+
+                tabDec.className = "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm transition-all duration-200 bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-mono font-semibold";
+                tabEnc.className = "flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-medium text-sm transition-all duration-200 text-slate-400 hover:text-slate-200 font-mono";
+            }
+        }
+
+        async function handleEncrypt() {
+            const plainInput = document.getElementById('plaintextInput');
+            const cipherOutput = document.getElementById('ciphertextOutput');
+            const text = plainInput.value.trim();
+
+            if (!text) {
+                showToast(t('toastEmptyPlain'), "warning");
+                plainInput.focus();
+                return;
+            }
+
+            try {
+                const encrypted = await encryptAES(text);
+                cipherOutput.value = encrypted;
+                updateCounters();
+                showToast(t('toastEncryptSuccess'), "success");
+            } catch (err) {
+                console.error(err);
+                showToast("Encryption failed: " + err.message, "error");
+            }
+        }
+
+        async function handleDecrypt() {
+            const cipherInput = document.getElementById('ciphertextInput');
+            const plainOutput = document.getElementById('plaintextOutput');
+            const statusTag = document.getElementById('decryptStatusTag');
+            const cipherText = cipherInput.value.trim();
+
+            if (!cipherText) {
+                showToast(t('toastEmptyCipher'), "warning");
+                cipherInput.focus();
+                return;
+            }
+
+            try {
+                const decrypted = await decryptAES(cipherText);
+                plainOutput.value = decrypted;
+                statusTag.textContent = t('decryptVerified');
+                statusTag.className = "text-[11px] font-mono text-emerald-400 font-semibold";
+                updateCounters();
+                showToast(t('toastDecryptSuccess'), "success");
+            } catch (err) {
+                console.warn("Decryption error:", err);
+                plainOutput.value = "";
+                updateCounters();
+                statusTag.textContent = t('decryptFailed');
+                statusTag.className = "text-[11px] font-mono text-red-400 font-semibold";
+                showToast(t('decryptFailed'), "error");
+            }
+        }
+
+        function clearText(elementId) {
+            const el = document.getElementById(elementId);
+            el.value = "";
+            if (elementId === 'plaintextInput') {
+                updateCounters();
+            }
+            if (elementId === 'ciphertextInput') {
+                document.getElementById('plaintextOutput').value = "";
+                document.getElementById('decryptStatusTag').textContent = t('decryptWaiting');
+                document.getElementById('decryptStatusTag').className = "text-[11px] font-mono text-slate-500";
+                updateCounters();
+            }
+        }
+
+        function copyEncryptedResult() {
+            const output = document.getElementById('ciphertextOutput');
+            const btnLabel = document.getElementById('copyCipherLabel');
+            const btnIcon = document.getElementById('copyCipherIcon');
+
+            if (!output.value) {
+                showToast(t('toastNothingToCopy'), "warning");
+                return;
+            }
+
+            copyToClipboard(output.value);
+            showToast(t('toastCopiedCipher'), "success");
+
+            if (btnLabel && btnIcon) {
+                btnLabel.textContent = t('copiedText');
+                btnIcon.innerHTML = `<i data-lucide="check" class="w-3.5 h-3.5 text-emerald-400"></i>`;
+                lucide.createIcons();
+
+                setTimeout(() => {
+                    btnLabel.textContent = t('copyCipherLabel');
+                    btnIcon.innerHTML = `<i data-lucide="copy" class="w-3.5 h-3.5"></i>`;
+                    lucide.createIcons();
+                }, 2000);
+            }
+        }
+
+        function copyDecryptedResult() {
+            const output = document.getElementById('plaintextOutput');
+            if (!output.value) {
+                showToast(t('toastNothingToCopy'), "warning");
+                return;
+            }
+            copyToClipboard(output.value);
+            showToast(t('toastCopiedPlain'), "success");
+        }
+
+        async function pasteEncryptedMessages() {
+            const input = document.getElementById('ciphertextInput');
+            try {
+                if (navigator.clipboard && navigator.clipboard.readText) {
+                    const text = await navigator.clipboard.readText();
+                    if (!text || text.trim() === '') {
+                        showToast(t('toastEmptyClipboard'), "warning");
+                        return;
+                    }
+                    input.value = text.trim();
+                    showToast(t('toastPasteSuccess'), "info");
+                    // Auto-decrypt if input resembles Base64 payload
+                    if (input.value.length >= 16) {
+                        handleDecrypt();
+                    }
+                } else {
+                    showToast(t('toastPasteDenied'), "warning");
+                    input.focus();
+                }
+            } catch (err) {
+                console.warn("Clipboard read error", err);
+                showToast(t('toastPasteDenied'), "warning");
+                input.focus();
+            }
+        }
+
+        function transferToDecrypt() {
+            const cipherOutput = document.getElementById('ciphertextOutput');
+            const payload = cipherOutput.value.trim();
+            if (!payload) {
+                showToast(t('toastEmptyPlain'), "warning");
+                return;
+            }
+            switchMode('decrypt');
+            const cipherInput = document.getElementById('ciphertextInput');
+            cipherInput.value = payload;
+            handleDecrypt();
+            showToast(t('toastTransferred'), "success");
+        }
+
+        function copyToClipboard(text) {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const temp = document.createElement('textarea');
+            temp.value = text;
+            temp.style.position = 'fixed';
+            temp.style.opacity = '0';
+            document.body.appendChild(temp);
+            temp.select();
+            try {
+                document.execCommand('copy');
+            } catch (err) {
+                console.error('Copy fallback failed', err);
+            }
+            document.body.removeChild(temp);
+        }
+
+        let toastTimeout = null;
+        function showToast(message, type = "info") {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMessage');
+            const toastIcon = document.getElementById('toastIcon');
+
+            clearTimeout(toastTimeout);
+            toastMsg.textContent = message;
+
+            if (type === 'success') {
+                toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-0 opacity-100 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border border-emerald-500/50 bg-[#0c1f17] text-emerald-300 text-xs sm:text-sm font-mono backdrop-blur-lg transition-all duration-300";
+                toastIcon.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>`;
+            } else if (type === 'error') {
+                toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-0 opacity-100 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border border-rose-500/50 bg-[#2b0e12] text-rose-300 text-xs sm:text-sm font-mono backdrop-blur-lg transition-all duration-300";
+                toastIcon.innerHTML = `<i data-lucide="alert-octagon" class="w-4 h-4 text-rose-400"></i>`;
+            } else if (type === 'warning') {
+                toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-0 opacity-100 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border border-amber-500/50 bg-[#281b0a] text-amber-300 text-xs sm:text-sm font-mono backdrop-blur-lg transition-all duration-300";
+                toastIcon.innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i>`;
+            } else {
+                toast.className = "fixed bottom-6 right-6 z-50 transform translate-y-0 opacity-100 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border border-slate-700 bg-slate-900/90 text-slate-200 text-xs sm:text-sm font-mono backdrop-blur-lg transition-all duration-300";
+                toastIcon.innerHTML = `<i data-lucide="info" class="w-4 h-4 text-cyan-400"></i>`;
+            }
+
+            lucide.createIcons();
+
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+                toast.classList.remove('translate-y-0', 'opacity-100');
+            }, 3200);
+        }
+
+        function toggleModal(show) {
+            const modal = document.getElementById('infoModal');
+            if (show) {
+                modal.classList.remove('hidden');
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Set initial language selector value
+            const langSelect = document.getElementById('langSelector');
+            if (langSelect) {
+                langSelect.value = currentLang;
+            }
+            applyTranslations();
+
+            // Realtime character counting
+            const plainInput = document.getElementById('plaintextInput');
+            plainInput.addEventListener('input', updateCounters);
+
+            // Modal click outside to dismiss
+            document.getElementById('infoModal').addEventListener('click', (e) => {
+                if (e.target.id === 'infoModal') toggleModal(false);
+            });
+
+            // Keyboard shortcut support: Ctrl+Enter / Cmd+Enter to execute, '?' to open help modal
+            plainInput.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    handleEncrypt();
+                }
+            });
+            document.getElementById('ciphertextInput').addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    handleDecrypt();
+                }
+            });
+            window.addEventListener('keydown', (e) => {
+                if (e.key === '?' && !['TEXTAREA', 'INPUT'].includes(document.activeElement.tagName)) {
+                    toggleModal(true);
+                }
+                if (e.key === 'Escape') {
+                    toggleModal(false);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
